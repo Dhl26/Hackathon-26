@@ -152,22 +152,50 @@ def generate_pdf():
         </ul>
 
         <h2>4. Data Analysis and Visualisation</h2>
-        <p>Our "UIDAI Insights Dashboard" provides real-time visibility into the ecosystem's health.</p>
+        <p>Our <strong>"UIDAI Insights Dashboard"</strong> serves as the central intelligence unit for this policy framework. It transforms raw data into actionable implementation triggers.</p>
 
-        <h3>Key Findings</h3>
+        <h3>Dashboard Architecture</h3>
         <ul>
-            <li><strong>Geographic Disparities:</strong> While national coverage is improving, we identified <strong>3 Tier-1 Critical Districts</strong> (e.g., Bagpat, UP) with near-zero enrollments, requiring immediate intervention.</li>
-            <li><strong>Enrollment vs. Births:</strong> A significant delta exists between registered births and Aadhaar enrollments in 2024, suggesting that process friction (separate visits for birth certificate and Aadhaar) is the primary drop-off point.</li>
-            <li><strong>Updates as Risk Indicator:</strong> Districts with low biometric update ratios for the 5-17 age group correlate strongly with low initial enrollment, indicating systemic infrastructure issues in those regions.</li>
+            <li><strong>Tech Stack:</strong> Built on <strong>Streamlit</strong> (Python) for rapid interactivity, integrated with <strong>Plotly</strong> for dynamic visualizations and <strong>Pandas/NumPy</strong> for high-performance data processing.</li>
+            <li><strong>Deployment:</strong> Cloud-native architecture (Streamlit Cloud) ensuring accessibility for district magistrates and state nodal officers.</li>
         </ul>
 
-        <h3>Visualisations Developed</h3>
+        <h3>Key Modules & Features</h3>
+        
+        <h4>1. Strategic Action Center & Age Cohort Analysis</h4>
+        <p>This module provides a granular view of enrollment distribution:</p>
         <ul>
-            <li><strong>Choropleth Saturation Maps:</strong> Interactive colour-coded maps of India showing state and district-wise saturation levels. "Red Zones" clearly highlight areas needing Rapid Kiosk Deployment.</li>
-            <li><strong>Age-Cohort Heatmaps:</strong> Visual grids displaying the demographic make-up of enrollments. Helps spot anomalies (e.g., a district with 90% adult enrollment but 0% child enrollment).</li>
-            <li><strong>Trend Analysis Charts:</strong> Line graphs comparing "Projected Births" vs "Actual Enrollments" over the last decade, visually demonstrating the widening or narrowing of the identity gap.</li>
-            <li><strong>Risk Profile Donut Charts:</strong> Segments districts into High, Medium, and Low risk based on their bio-metric update compliance, aiding resource allocation.</li>
+            <li><strong>Demographic Heatmaps:</strong> Visualizes the density of enrollments across Age Groups (0-5, 5-17, 18+). This instantly highlights "inverted pyramids" where adult enrollment is high but child enrollment is near zero.</li>
+            <li><strong>Interactive Filtering:</strong> Users can drill down from "All India" to specific States and Districts to isolate local anomalies.</li>
         </ul>
+
+        <h4>2. Temporal Trends Engine</h4>
+        <p>A time-series analysis tool that tracks month-on-month enrollment velocity:</p>
+        <ul>
+            <li><strong>Growth (QoQ) Metrics:</strong> Automatically calculates Quarter-over-Quarter growth. If a district shows negative growth, it is flagged for review.</li>
+            <li><strong>Peak Detection:</strong> Identifies historical enrollment spikes (e.g., during past drives) to benchmark future capacity planning.</li>
+        </ul>
+
+        <h4>3. Risk & Anomalies Dashboard</h4>
+        <p>The core compliance engine that categorizes districts based on ecosystem health:</p>
+        <ul>
+            <li><strong>Critical Risk (⚫):</strong> Districts with <strong>ZERO (0) enrollments</strong> in the 5-17 age group (indicating no base population for updates) or 0-5 group.</li>
+            <li><strong>High Risk (🔴):</strong> Districts with Bio-Update Ratios &lt;20%, indicating a failure to update child biometrics at age 5.</li>
+            <li><strong>Medium (🟡) & Low (🟢) Risk:</strong> Districts meeting standard operational benchmarks.</li>
+        </ul>
+
+        <h4>4. Birth vs Enrollment Predictive Model</h4>
+        <p>To quantify the exact "Enrollment Gap", we developed a predictive model:</p>
+        <ul>
+            <li><strong>Model Type:</strong> Linear Regression (Ordinary Least Squares).</li>
+            <li><strong>Training Data:</strong> Civil Registration System (CRS) birth data (2014-2023).</li>
+            <li><strong>Projection:</strong> Forecasts <strong>2025 Birth Cohorts</strong> for every state.</li>
+            <li><strong>Gap Analysis:</strong> Compares <em>Projected 2025 Births</em> vs <em>Actual Child Enrollments</em>. A gap >10% triggers a "Critical Coverage Alert".</li>
+        </ul>
+
+        <div class="alert-box">
+            <strong>Key Insight:</strong> The integration of the Linear Regression model allows us to move from "reactive" analysis (looking at past data) to "proactive" planning (estimating the 2025 target cohort).
+        </div>
 
         <div id="footerContent" style="text-align: center; color: #888; font-size: 9pt;">
             Generated by Team Birth-Chain for UIDAI Hackathon 2026
