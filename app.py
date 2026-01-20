@@ -326,7 +326,7 @@ elif app_mode == "🎯 Strategic Action Center":
 
     st.divider()
 
-    tabs = st.tabs(["📊 Age Cohort & Schemes", "📈 Temporal Trends", "🚨 Risk & Anomalies", "💡 Solution Framework"])
+    tabs = st.tabs(["📊 Age Cohort & Schemes", "📈 Temporal Trends", "🚨 Risk & Anomalies"])
 
     # --- TAB 1: AGE COHORT & SCHEMES ---
     with tabs[0]:
@@ -531,48 +531,7 @@ elif app_mode == "🎯 Strategic Action Center":
         fig_bar = px.bar(bio_ages, x='Age Group', y='Count', color='Age Group', title=f"Update Activity: {selected_state}")
         st.plotly_chart(fig_bar, width='stretch')
 
-    # --- TAB 4: SOLUTION FRAMEWORK ---
-    with tabs[3]:
-        st.subheader("💡 Solutions")
-        
-        # Use full_risk from previous block if available, else re-calculate
-        # Better to just use the selected scope
-        
-        st.info(f"Generating recommendations for scope: **{selected_state}**")
-        
-        if selected_state != "All India":
-             # Specific Recommendations
-             if not enrol_filtered.empty:
-                 if not bio_filtered.empty and 'Total' in bio_filtered.columns:
-                     denom = enrol_filtered['Total'].sum()
-                     if denom > 0:
-                         avg_update_scope = bio_filtered['Total'].sum() / denom
-                     else:
-                         avg_update_scope = 0
-                 else:
-                    avg_update_scope = None
 
-
-                 
-
-                 with c1_sol:
-                     if avg_update_scope is not None:
-                        st.metric("Aggregate Update Compliance", f"{avg_update_scope:.1%}")
-                     else:
-                        st.warning("Biometric data unavailable for metric.")
-                 
-                 with c2_sol:
-                     if avg_update_scope is not None:
-                         if avg_update_scope < 0.3:
-                             st.error("⚠️ Critical Confidence Gap")
-                             st.markdown("- **Action:** Initiate state-wide 'Update Mela'.")
-                         else:
-                             st.success("✅ Healthy Ecosystem")
-                             st.markdown("- **Action:** Focus on maintaining service levels.")
-                     else:
-                         st.info("Cannot determine compliance without biometric data.")
-        else:
-            st.write("Select a specific state to generate targeted solution frameworks.")
 
 # ==========================================
 # 3. BIRTH VS ENROLLMENT
