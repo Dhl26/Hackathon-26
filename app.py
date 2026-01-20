@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from glob import glob
 import os
 import json
@@ -105,6 +106,68 @@ def load_geojson():
     except:
         return None, None
 
+@st.cache_data
+def load_birth_data():
+    """Load birth statistics from Excel file - includes both States and Union Territories"""
+    try:
+        df = pd.read_excel('births_statewise_and_ut.xlsx', sheet_name='Registered Births')
+        
+        # Skip the header rows and get state data
+        states_start = None
+        ut_start = None
+        data_end = None
+        
+        for idx, row in df.iterrows():
+            if row.iloc[1] == 'States':
+                states_start = idx + 1
+            elif row.iloc[1] == 'Union Territories':
+                ut_start = idx + 1
+        
+        # Find where data ends
+        if ut_start:
+            for idx in range(ut_start, len(df)):
+                if pd.isna(df.iloc[idx, 1]) or df.iloc[idx, 1] == '':
+                    data_end = idx
+                    break
+            if data_end is None:
+                data_end = len(df)
+        
+        all_data = []
+        if states_start and ut_start:
+            states_df = df.iloc[states_start:ut_start-1].copy()
+            all_data.append(states_df)
+            ut_df = df.iloc[ut_start:data_end].copy()
+            all_data.append(ut_df)
+            
+            combined_df = pd.concat(all_data, ignore_index=True)
+            combined_df.columns = ['Sl_No', 'State', '2014', '2015', '2016', '2017', '2018', 
+                                    '2019', '2020', '2021', '2022', '2023', '2024', '2025']
+            
+            combined_df = combined_df[combined_df['State'].notna()].copy()
+            combined_df = combined_df[combined_df['State'] != ''].reset_index(drop=True)
+            
+            for col in ['2014', '2015', '2016', '2017', '2018', '2019', '2020', 
+                        '2021', '2022', '2023', '2024', '2025']:
+                combined_df[col] = pd.to_numeric(combined_df[col], errors='coerce')
+            
+            return combined_df
+        return pd.DataFrame()
+    except Exception as e:
+        return pd.DataFrame()
+
+def normalize_state_name(name):
+    """Normalize state names for matching"""
+    if pd.isna(name): return name
+    name = str(name).strip()
+    mappings = {
+        'Andaman & Nicobar Islands': 'A & N Islands',
+        'Andaman and Nicobar Islands': 'A & N Islands',
+        'Dadra & Nagar Haveli and Daman & Diu': 'D & N Haveli and Daman & Diu',
+        'Dadra and Nagar Haveli and Daman and Diu': 'D & N Haveli and Daman & Diu',
+        'Jammu and Kashmir': 'Jammu & Kashmir',
+    }
+    return mappings.get(name, name)
+
 with st.spinner('Loading Data & Maps...'):
     df_enrol, df_bio, df_demo = load_data()
     geojson_states, geojson_districts = load_geojson()
@@ -118,7 +181,7 @@ st.sidebar.title("Navigation")
 app_mode = st.sidebar.radio("Go to:", [
     "🇮🇳 Dashboard Overview",
     "🎯 Strategic Action Center",
-    "📜 Active Govt Schemes"
+    "👶 Birth vs Enrollment"
 ])
 
 # ==========================================
@@ -480,56 +543,133 @@ elif app_mode == "🎯 Strategic Action Center":
             st.write("Select a specific state to generate targeted solution frameworks.")
 
 # ==========================================
-# 3. ACTIVE GOVT SCHEMES (New)
+# 3. BIRTH VS ENROLLMENT
 # ==========================================
-elif app_mode == "📜 Active Govt Schemes":
-    st.title("📜 Active Government Schemes & Coverage")
-    st.markdown("Explore active government schemes linked to Aadhaar across different levels.")
+elif app_mode == "👶 Birth vs Enrollment":
+    st.title("👶 Birth Registration & Aadhaar Enrollment Analysis")
+    st.markdown("Comparing birth registrations (2025 projections) with Aadhaar enrollment data to identify coverage gaps.")
+
+    # Load Birth Data
+    birth_df = load_birth_data()
     
-    st_sch, center_sch = st.tabs(["🏛️ State-wise Schemes", "🇮🇳 Nationwide Schemes"])
-    
-    # Mock Data for Schemes
-    central_schemes = [
-        {"Scheme": "PM-KISAN", "Sector": "Agriculture", "Target": "Farmers", "Benefits": "Income Support (₹6000/yr)"},
-        {"Scheme": "Ayushman Bharat (PM-JAY)", "Sector": "Health", "Target": "Low Income Families", "Benefits": "Health Insurance (₹5L)"},
-        {"Scheme": "Pradhan Mantri Awas Yojana (PMAY)", "Sector": "Housing", "Target": "Urban/Rural Poor", "Benefits": "Housing Subsidy"},
-        {"Scheme": "PM Ujjwala Yojana", "Sector": "Energy", "Target": "BPL Households", "Benefits": "LPG Connection Subsidy"},
-        {"Scheme": "MGNREGA", "Sector": "Employment", "Target": "Rural Workforce", "Benefits": "100 Days Employment Guarantee"},
-    ]
-    
-    state_schemes_map = {
-        "Andhra Pradesh": ["YSR Rythu Bharosa", "Amma Vodi", "Jagananna Vidya Deevena"],
-        "Telangana": ["Rythu Bandhu", "Dalit Bandhu", "Kalyana Lakshmi"],
-        "Karnataka": ["Gruha Lakshmi", "Shakti Scheme", "Anna Bhagya"],
-        "Maharashtra": ["Mahatma Jyotirao Phule Shetkari Karjmukti Yojana", "Shiv Bhojan Thali"],
-        "Tamil Nadu": ["Moovalur Ramamirtham Ammaiyar", "Illam Thedi Kalvi"],
-        "Uttar Pradesh": ["Kanya Sumangala Yojana", "Abhyudaya Yojana"],
-        "West Bengal": ["Kanyashree Prakalpa", "Swasthya Sathi"],
-        "Gujarat": ["Vahli Dikri Yojana", "Kisan Suryodaya Yojana"],
-        "Odisha": ["KALIA Scheme", "Biju Swasthya Kalyan Yojana"],
-        "Rajasthan": ["Chiranjeevi Health Insurance", "Indira Gandhi Urban Credit Card"],
-        "Madhya Pradesh": ["Ladli Behna Yojana", "Sambal Yojana"]
-    }
-    
-    with center_sch:
-        st.subheader("🇮🇳 Central Government Schemes")
-        st.table(pd.DataFrame(central_schemes))
-    
-    with st_sch:
-        st.subheader("📍 State-Specific Schemes")
-        selected_state_sch = st.selectbox("Select State:", sorted(state_schemes_map.keys()))
+    if birth_df.empty:
+        st.error("Could not load birth data. Please check 'births_statewise_and_ut.xlsx'.")
+    else:
+        # Prepare Enrollment Data from existing df_enrol
+        # Aggregate by state
+        state_enrollment = df_enrol.groupby('state').agg({
+            'age_0_5': 'sum',
+            'age_5_17': 'sum',
+            'age_18_greater': 'sum'
+        }).reset_index()
         
-        if selected_state_sch in state_schemes_map:
-            schemes = state_schemes_map[selected_state_sch]
-            for s in schemes:
-                st.markdown(f"""
-                <div class="scheme-box">
-                    <h4>{s}</h4>
-                    <p>Status: <b>Active</b> | Integration: <b>Aadhaar Seeded</b></p>
-                </div>
-                """, unsafe_allow_html=True)
+        state_enrollment['total_enrollment'] = state_enrollment[['age_0_5', 'age_5_17', 'age_18_greater']].sum(axis=1)
+        state_enrollment['child_enrollment'] = state_enrollment['age_0_5']
+        
+        # Normalize names
+        state_enrollment['state'] = state_enrollment['state'].apply(normalize_state_name)
+        birth_df['State'] = birth_df['State'].apply(normalize_state_name)
+        
+        # Merge
+        merged_df = pd.merge(
+            birth_df[['State', '2025']],
+            state_enrollment[['state', 'child_enrollment', 'total_enrollment']],
+            left_on='State',
+            right_on='state',
+            how='left'
+        )
+        
+        # Metrics
+        merged_df['coverage_ratio'] = (merged_df['child_enrollment'] / merged_df['2025']) * 100
+        merged_df['coverage_ratio'] = merged_df['coverage_ratio'].fillna(0)
+        
+        # --- KEY METRICS ---
+        st.markdown("### 📈 Key Metrics (2025 Projections)")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Projected Births", f"{merged_df['2025'].sum():,.0f}")
+        with col2:
+            st.metric("Total Child Enrollment (0-5)", f"{merged_df['child_enrollment'].sum():,.0f}")
+        with col3:
+            st.metric("Avg Coverage Ratio", f"{merged_df['coverage_ratio'].mean():.1f}%")
+        with col4:
+            st.metric("States < 100% Coverage", f"{len(merged_df[merged_df['coverage_ratio'] < 100])}")
             
-            st.info(f"Showing major flagship schemes for {selected_state_sch}. Database expansion in progress.")
-        else:
-            st.warning("Data for this state is being aggregated.")
+        st.divider()
+        
+        # --- VISUALIZATIONS ---
+        tabs = st.tabs(["🗺️ Coverage Map", "📊 State Comparison", "📈 Trends Analysis", "🎯 Gap Analysis"])
+        
+        # Tab 1: Map
+        with tabs[0]:
+            st.subheader("State-wise Coverage Ratio")
+            map_df = merged_df.sort_values('coverage_ratio', ascending=True)
+            fig_map = px.bar(
+                map_df, y='State', x='coverage_ratio', orientation='h',
+                title='Aadhaar Enrollment Coverage by State (2025)',
+                labels={'coverage_ratio': 'Coverage Ratio (%)', 'State': 'State/UT'},
+                color='coverage_ratio', color_continuous_scale='RdYlGn',
+                height=max(800, len(map_df) * 30)
+            )
+            fig_map.add_vline(x=100, line_dash="dash", line_color="red", annotation_text="100% Coverage")
+            st.plotly_chart(fig_map, use_container_width=True)
+            
+        # Tab 2: Comparison
+        with tabs[1]:
+            st.subheader("Birth vs Enrollment Comparison")
+            comparison_df = merged_df.sort_values('2025', ascending=False)
+            fig_comp = go.Figure()
+            fig_comp.add_trace(go.Bar(name='Projected Births (2025)', x=comparison_df['State'], y=comparison_df['2025'], marker_color='#667eea'))
+            fig_comp.add_trace(go.Bar(name='Child Enrollment (0-5)', x=comparison_df['State'], y=comparison_df['child_enrollment'], marker_color='#764ba2'))
+            fig_comp.update_layout(barmode='group', xaxis_tickangle=-45, title='All States: Births vs Enrollment')
+            st.plotly_chart(fig_comp, use_container_width=True)
+            
+        # Tab 3: Trends
+        with tabs[2]:
+            st.subheader("Historical Birth Trends (2014-2025)")
+            all_states = sorted(birth_df['State'].dropna().unique().tolist())
+            selected_trends = st.multiselect("Select states to compare:", options=['All States'] + all_states, default=['Uttar Pradesh', 'Maharashtra'])
+            
+            if 'All States' in selected_trends:
+                selected_trends = all_states
+                
+            if selected_trends:
+                trend_df = birth_df[birth_df['State'].isin(selected_trends)]
+                trend_long = trend_df.melt(
+                    id_vars=['State'], 
+                    value_vars=[str(y) for y in range(2014, 2026)],
+                    var_name='Year', value_name='Births'
+                )
+                trend_long['Year'] = pd.to_numeric(trend_long['Year'])
+                fig_trend = px.line(trend_long, x='Year', y='Births', color='State', markers=True, title='Birth Registration Trends')
+                fig_trend.add_vline(x=2023.5, line_dash="dash", line_color="gray", annotation_text="Predicted →")
+                st.plotly_chart(fig_trend, use_container_width=True)
+            else:
+                st.info("Select states to view trends.")
+
+        # Tab 4: Gaps
+        with tabs[3]:
+            st.subheader("Coverage Gap Analysis")
+            gap_df = merged_df.copy()
+            gap_df['enrollment_gap'] = gap_df['2025'] - gap_df['child_enrollment']
+            gap_df['gap_percentage'] = ((gap_df['enrollment_gap'] / gap_df['2025']) * 100).fillna(0)
+            
+            col_g1, col_g2 = st.columns(2)
+            
+            with col_g1:
+                st.markdown("### 🔴 Largest Gaps")
+                top_gaps = gap_df[gap_df['enrollment_gap'] > 0].sort_values('enrollment_gap', ascending=False).head(10)
+                fig_gap = px.bar(top_gaps, x='State', y='enrollment_gap', color='gap_percentage', color_continuous_scale='Reds', title="Gap (Births - Enrollment)")
+                st.plotly_chart(fig_gap, use_container_width=True)
+                
+            with col_g2:
+                st.markdown("### 🟢 Excess Enrollment")
+                excess = gap_df[gap_df['enrollment_gap'] < 0].sort_values('enrollment_gap').head(10)
+                fig_exc = px.bar(excess, x='State', y='enrollment_gap', color='enrollment_gap', color_continuous_scale='Greens_r', title="Excess (Enrollment > Births)")
+                st.plotly_chart(fig_exc, use_container_width=True)
+
+        st.divider()
+        st.subheader("📋 Detailed Data")
+        st.dataframe(merged_df, use_container_width=True)
 
