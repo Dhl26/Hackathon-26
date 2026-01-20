@@ -544,7 +544,12 @@ elif app_mode == "🎯 Strategic Action Center":
         if selected_state != "All India":
              # Specific Recommendations
              if not enrol_filtered.empty:
-                 avg_update_scope = bio_filtered['Total'].sum() / enrol_filtered['Total'].sum()
+                 denom = enrol_filtered['Total'].sum()
+                 if denom > 0:
+                     avg_update_scope = bio_filtered['Total'].sum() / denom
+                 else:
+                     avg_update_scope = 0
+
                  
                  c1_sol, c2_sol = st.columns(2)
                  with c1_sol:
