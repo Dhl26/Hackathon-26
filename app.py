@@ -1,4 +1,4 @@
-import streamlit as st
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -400,7 +400,7 @@ elif app_mode == "🎯 Strategic Action Center":
         
         if 'date' in enrol_filtered.columns and not enrol_filtered.empty:
             # Aggregate by month
-            trend_df = enrol_filtered.set_index('date').resample('M')['Total'].sum().reset_index()
+            trend_df = enrol_filtered.set_index('date').resample('ME')['Total'].sum().reset_index()
             
             if not trend_df.empty:
                 # Plot
