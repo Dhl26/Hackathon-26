@@ -95,6 +95,11 @@ def load_data():
 
     return df_enrol, df_bio, df_demo
 
+    # Verify data loaded
+    if df_enrol.empty or df_bio.empty:
+        return df_enrol, df_bio, df_demo # Let main block handle or fail, but better to warn
+
+
 @st.cache_data
 def load_geojson():
     try:
@@ -171,6 +176,11 @@ def normalize_state_name(name):
 with st.spinner('Loading Data & Maps...'):
     df_enrol, df_bio, df_demo = load_data()
     geojson_states, geojson_districts = load_geojson()
+
+    if df_enrol.empty:
+        st.error("⚠️ **Critical Error:** Enrolment Data not found.")
+        st.warning("Please ensure the folder `Dataset_Cleaned` and its contents are committed and pushed to the repository.")
+        st.stop()
 
 # ==========================================
 # APP LAYOUT
@@ -419,9 +429,9 @@ elif app_mode == "🎯 Strategic Action Center":
                         if prev_3_months > 0:
                             change = (last_3_months / prev_3_months) - 1
                             if change < -0.05:
-                                st.error(f"⚠️ **Decline Detected:** Activity is {change:.1%} lower than previous period.")
+                                st.error(f"⚠️ **Decline (QoQ):** Activity is {change:.1%} lower than previous period.")
                             elif change > 0.05:
-                                st.success(f"✅ **Growth Detected:** Activity is up by +{change:.1%}!")
+                                st.success(f"✅ **Growth (QoQ):** Activity is up by +{change:.1%}!")
                             else:
                                 st.info("⚖️ **Steady State:** Enrolment is stable.")
                         else:
@@ -443,13 +453,15 @@ elif app_mode == "🎯 Strategic Action Center":
             if not full_risk.empty:
                 full_risk['Update_Ratio'] = full_risk['bio_age_5_17'] / full_risk['age_5_17']
                 
+                # Priority Logic: Anomaly (0 Enrollment) -> High -> Medium -> Low
                 conditions = [
+                    (full_risk['age_5_17'] == 0),  # Anomaly: No Base Population
                     (full_risk['Update_Ratio'] < 0.2),
                     (full_risk['Update_Ratio'] >= 0.2) & (full_risk['Update_Ratio'] < 0.5),
                     (full_risk['Update_Ratio'] >= 0.5)
                 ]
-                choices = ['🔴 High Risk', '🟡 Medium Risk', '🟢 Low Risk']
-                full_risk['Risk_Category'] = np.select(conditions, choices, default='Unknown')
+                choices = ['⚫ Critical Risk', '🔴 High Risk', '🟡 Medium Risk', '🟢 Low Risk']
+                full_risk['Risk_Category'] = np.select(conditions, choices, default='⚫ Critical Risk')
                 
                 risk_counts = full_risk['Risk_Category'].value_counts().reset_index()
                 risk_counts.columns = ['Risk Level', 'District Count']
@@ -457,13 +469,19 @@ elif app_mode == "🎯 Strategic Action Center":
                 c1_risk, c2_risk = st.columns([1, 2])
                 with c1_risk:
                     fig_donut = px.pie(risk_counts, values='District Count', names='Risk Level', hole=0.4, 
-                                       color='Risk Level', color_discrete_map={'🔴 High Risk':'red', '🟡 Medium Risk':'orange', '🟢 Low Risk':'green'},
+                                       color='Risk Level', color_discrete_map={'🔴 High Risk':'red', '🟡 Medium Risk':'orange', '🟢 Low Risk':'green', '⚫ Critical Risk':'black'},
                                        title="Risk Profile")
                     st.plotly_chart(fig_donut, use_container_width=True)
                     
                 with c2_risk:
-                    st.markdown("**🔍 Top Risk Districts (Action Required)**")
-                    st.dataframe(full_risk.sort_values('Update_Ratio').head(10)[['district', 'age_5_17', 'bio_age_5_17', 'Update_Ratio', 'Risk_Category']].style.format({'Update_Ratio': '{:.1%}'}), use_container_width=True)
+                    st.markdown("**🔍 District Risk Analysis (Full List)**")
+                    # Sort by Update_Ratio ascending, but put Critical (NaNs) at the top as they are most urgent
+                    st.dataframe(
+                        full_risk.sort_values('Update_Ratio', na_position='first')[['district', 'age_5_17', 'bio_age_5_17', 'Update_Ratio', 'Risk_Category']]
+                        .style.format({'Update_Ratio': '{:.1%}'}), 
+                        use_container_width=True,
+                        height=500
+                    )
 
                 st.divider()
                 
