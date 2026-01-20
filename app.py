@@ -232,7 +232,7 @@ if app_mode == "🇮🇳 Dashboard Overview":
         fig_india.update_geos(fitbounds="locations", visible=False)
         fig_india.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=500)
         
-        select_event = st.plotly_chart(fig_india, use_container_width=True, on_select="rerun", selection_mode="points")
+        select_event = st.plotly_chart(fig_india, width='stretch', on_select="rerun", selection_mode="points")
     else:
         st.error("Map data missing. Please check geojson files.")
         select_event = None
@@ -278,13 +278,13 @@ if app_mode == "🇮🇳 Dashboard Overview":
                 )
                 fig_st.update_geos(fitbounds="locations", visible=False)
                 fig_st.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=400)
-                st.plotly_chart(fig_st, use_container_width=True)
+                st.plotly_chart(fig_st, width='stretch')
             else:
                 st.warning("No district map available for this state.")
     
     with col_chart:
         st.markdown("**📊 District Rankings**")
-        st.dataframe(dist_agg, height=400, hide_index=True, use_container_width=True)
+        st.dataframe(dist_agg, height=400, hide_index=True, width='stretch')
 
 # ==========================================
 # 2. STRATEGIC ACTION CENTER
@@ -352,7 +352,7 @@ elif app_mode == "🎯 Strategic Action Center":
             
             fig_heat = px.imshow(heat_df_final, text_auto='.1%', aspect="auto", color_continuous_scale="RdBu_r",
                                  title=chart_title)
-            st.plotly_chart(fig_heat, use_container_width=True)
+            st.plotly_chart(fig_heat, width='stretch')
         else:
             st.warning("No data available for the selected filters.")
 
@@ -414,7 +414,7 @@ elif app_mode == "🎯 Strategic Action Center":
                     fig_trend.add_annotation(x=peak_date, y=trend_df['Total'].max(), text="🚀 Peak", showarrow=True, arrowhead=1)
                 
                 fig_trend.update_layout(title=f"Monthly Enrolment Trend: {selected_state}", hovermode="x unified")
-                st.plotly_chart(fig_trend, use_container_width=True)
+                st.plotly_chart(fig_trend, width='stretch')
                 
                 # Diagnostics
                 if len(trend_df) >= 3:
@@ -470,7 +470,7 @@ elif app_mode == "🎯 Strategic Action Center":
                     fig_donut = px.pie(risk_counts, values='District Count', names='Risk Level', hole=0.4, 
                                        color='Risk Level', color_discrete_map={'🔴 High Risk':'red', '🟡 Medium Risk':'orange', '🟢 Low Risk':'green', '⚫ Critical Risk':'black'},
                                        title="Risk Profile")
-                    st.plotly_chart(fig_donut, use_container_width=True)
+                    st.plotly_chart(fig_donut, width='stretch')
                     
                 with c2_risk:
                     st.markdown("**🔍 District Risk Analysis (Full List)**")
@@ -478,7 +478,7 @@ elif app_mode == "🎯 Strategic Action Center":
                     st.dataframe(
                         full_risk.sort_values('Update_Ratio', na_position='first')[['district', 'age_5_17', 'bio_age_5_17', 'Update_Ratio', 'Risk_Category']]
                         .style.format({'Update_Ratio': '{:.1%}'}), 
-                        use_container_width=True,
+                        width='stretch',
                         height=500
                     )
 
@@ -517,7 +517,7 @@ elif app_mode == "🎯 Strategic Action Center":
                         )
                         fig_risk_map.update_geos(fitbounds="locations", visible=False)
                         fig_risk_map.update_layout(margin={"r":0,"t":30,"l":0,"b":0}, height=400)
-                        st.plotly_chart(fig_risk_map, use_container_width=True)
+                        st.plotly_chart(fig_risk_map, width='stretch')
                     else:
                         st.warning(f"Boundary data not found for {risk_map_state}")
             else:
@@ -529,7 +529,7 @@ elif app_mode == "🎯 Strategic Action Center":
         bio_ages.columns = ['Age Group', 'Count']
         bio_ages['Age Group'] = bio_ages['Age Group'].replace({'bio_age_5_17': 'School Age (5-17)', 'bio_age_17_': 'Adults (18+)'})
         fig_bar = px.bar(bio_ages, x='Age Group', y='Count', color='Age Group', title=f"Update Activity: {selected_state}")
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
     # --- TAB 4: SOLUTION FRAMEWORK ---
     with tabs[3]:
@@ -543,24 +543,34 @@ elif app_mode == "🎯 Strategic Action Center":
         if selected_state != "All India":
              # Specific Recommendations
              if not enrol_filtered.empty:
-                 denom = enrol_filtered['Total'].sum()
-                 if denom > 0:
-                     avg_update_scope = bio_filtered['Total'].sum() / denom
+                 if not bio_filtered.empty and 'Total' in bio_filtered.columns:
+                     denom = enrol_filtered['Total'].sum()
+                     if denom > 0:
+                         avg_update_scope = bio_filtered['Total'].sum() / denom
+                     else:
+                         avg_update_scope = 0
                  else:
-                     avg_update_scope = 0
+                    avg_update_scope = None
+
 
                  
-                 c1_sol, c2_sol = st.columns(2)
+
                  with c1_sol:
-                     st.metric("Aggregate Update Compliance", f"{avg_update_scope:.1%}")
+                     if avg_update_scope is not None:
+                        st.metric("Aggregate Update Compliance", f"{avg_update_scope:.1%}")
+                     else:
+                        st.warning("Biometric data unavailable for metric.")
                  
                  with c2_sol:
-                     if avg_update_scope < 0.3:
-                         st.error("⚠️ Critical Confidence Gap")
-                         st.markdown("- **Action:** Initiate state-wide 'Update Mela'.")
+                     if avg_update_scope is not None:
+                         if avg_update_scope < 0.3:
+                             st.error("⚠️ Critical Confidence Gap")
+                             st.markdown("- **Action:** Initiate state-wide 'Update Mela'.")
+                         else:
+                             st.success("✅ Healthy Ecosystem")
+                             st.markdown("- **Action:** Focus on maintaining service levels.")
                      else:
-                         st.success("✅ Healthy Ecosystem")
-                         st.markdown("- **Action:** Focus on maintaining service levels.")
+                         st.info("Cannot determine compliance without biometric data.")
         else:
             st.write("Select a specific state to generate targeted solution frameworks.")
 
