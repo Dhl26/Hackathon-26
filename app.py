@@ -95,9 +95,7 @@ def load_data():
 
     return df_enrol, df_bio, df_demo
 
-    # Verify data loaded
-    if df_enrol.empty or df_bio.empty:
-        return df_enrol, df_bio, df_demo # Let main block handle or fail, but better to warn
+
 
 
 @st.cache_data
